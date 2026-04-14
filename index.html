@@ -173,7 +173,8 @@
                 this.el.object3D.rotation.y += dx * this.data.rotateSpeed;
               } else {
                 // 🔥 ROTACIÓN VERTICAL
-                this.el.object3D.rotation.x += dy * this.data.rotateSpeed;
+                const direction = Math.cos(this.el.object3D.rotation.y);
+                this.el.object3D.rotation.x += dy * this.data.rotateSpeed * (direction >= 0 ? 1 : -1);
 
                 const maxTilt = Math.PI / 2;
                 this.el.object3D.rotation.x = Math.max(-maxTilt, Math.min(maxTilt, this.el.object3D.rotation.x));
