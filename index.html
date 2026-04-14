@@ -158,16 +158,26 @@
             this.prevX = e.clientX;
             this.prevY = e.clientY;
 
-            if (Math.abs(dx) > Math.abs(dy) && !this.isTouchingTapa) {
-              // ROTACIÓN
-              this.el.object3D.rotation.y += dx * this.data.rotateSpeed;
-            } 
-            else if (this.tapa && this.isTouchingTapa) {
-              // CONTROL DE TAPA
+            // 👉 SI TOCA LA TAPA
+            if (this.tapa && this.isTouchingTapa) {
               this.tapaAngle -= dy * this.data.tapaSpeed;
               this.tapaAngle = this.clamp(this.tapaAngle, this.data.tapaMin, this.data.tapaMax);
 
               this.tapa.rotation.x = -THREE.MathUtils.degToRad(this.tapaAngle);
+            }
+
+            // 👉 SI NO TOCA LA TAPA
+            else {
+              if (Math.abs(dx) > Math.abs(dy)) {
+                // ROTACIÓN HORIZONTAL
+                this.el.object3D.rotation.y += dx * this.data.rotateSpeed;
+              } else {
+                // 🔥 ROTACIÓN VERTICAL
+                this.el.object3D.rotation.x += dy * this.data.rotateSpeed;
+
+                const maxTilt = Math.PI / 2;
+                this.el.object3D.rotation.x = Math.max(-maxTilt, Math.min(maxTilt, this.el.object3D.rotation.x));
+              }
             }
           }
         },
