@@ -27,7 +27,7 @@
           position="0 0 0"
           rotation="0 0 0"
           scale="5 5 5"
-          gesture-controls="tapaName: tapa_v31;"
+          gesture-controls
         ></a-gltf-model>
       </a-entity>
     </a-scene>
@@ -35,82 +35,57 @@
     <script>
       AFRAME.registerComponent("gesture-controls", {
         schema: {
-          zoomSpeed: { type: "number", default: 0.0025 },
-          minScale:  { type: "number", default: 0.8 },
-          maxScale:  { type: "number", default: 15.0 },
+          minScale: { default: 0.8 },
+          maxScale: { default: 15.0 },
+          rotateSpeed: { default: 0.008 },
 
-          rotateSpeed: { type: "number", default: 0.008 },
-          minMovePx:   { type: "number", default: 1 },
-
-          tapaName:     { type: "string", default: "tapa_v31" },
-          tapaAxis:     { type: "string", default: "x" },
-          tapaMinDeg:   { type: "number", default: 0 },
-          tapaMaxDeg:   { type: "number", default: 180 },
-          tapaDegPerPx: { type: "number", default: 0.5 }
+          tapaName: { default: "tapa_v31" },
+          tapaMin: { default: 0 },
+          tapaMax: { default: 180 },
+          tapaSpeed: { default: 0.5 }
         },
 
         init: function () {
-          this.canvas = null;
-          this.camera = null;
           this.pointers = new Map();
 
           this.isPinching = false;
           this.isRotating = false;
 
-          this.modelRoot = null;
-          this.tapaObj = null;
-
-          this.raycaster = new THREE.Raycaster();
-          this.ndc = new THREE.Vector2();
-
           this.prevX = 0;
+          this.prevY = 0;
 
           this.startDist = 0;
-          this.startScale = { x: 1, y: 1, z: 1 };
+          this.startScale = 1;
 
-          this.onPointerDown = this.onPointerDown.bind(this);
-          this.onPointerMove = this.onPointerMove.bind(this);
-          this.onPointerUp   = this.onPointerUp.bind(this);
+          this.tapa = null;
+          this.tapaAngle = 0;
 
           this.el.addEventListener("model-loaded", () => {
-            this.modelRoot = this.el.object3D;
-            this.tapaObj = this.modelRoot.getObjectByName(this.data.tapaName);
+            this.tapa = this.el.object3D.getObjectByName(this.data.tapaName);
+
+            if (this.tapa) {
+              console.log("✅ tapa encontrada:", this.data.tapaName);
+            } else {
+              console.warn("❌ tapa no encontrada");
+            }
           });
 
-          const waitForCanvas = () => {
-            const scene = this.el.sceneEl;
-            if (scene && scene.renderer && scene.renderer.domElement && scene.camera) {
-              this.canvas = scene.renderer.domElement;
-              this.camera = scene.camera;
-
-              this.canvas.style.touchAction = "none";
-
-              this.canvas.addEventListener("pointerdown", this.onPointerDown, { passive: false, capture: true });
-              window.addEventListener("pointermove", this.onPointerMove, { passive: false, capture: true });
-              window.addEventListener("pointerup", this.onPointerUp, { passive: false, capture: true });
-              window.addEventListener("pointercancel", this.onPointerUp, { passive: false, capture: true });
-            } else {
-              setTimeout(waitForCanvas, 100);
-            }
-          };
-          waitForCanvas();
+          window.addEventListener("pointerdown", this.onDown.bind(this));
+          window.addEventListener("pointermove", this.onMove.bind(this));
+          window.addEventListener("pointerup", this.onUp.bind(this));
+          window.addEventListener("pointercancel", this.onUp.bind(this));
         },
 
-        clamp: function (v, min, max) {
+        clamp(v, min, max) {
           return Math.max(min, Math.min(max, v));
         },
 
-        _dist2Pointers: function () {
-          const arr = Array.from(this.pointers.values());
-          if (arr.length < 2) return 0;
-          const dx = arr[1].x - arr[0].x;
-          const dy = arr[1].y - arr[0].y;
-          return Math.hypot(dx, dy);
+        distance(a, b) {
+          return Math.hypot(a.x - b.x, a.y - b.y);
         },
 
-        onPointerDown: function (e) {
+        onDown(e) {
           if (e.pointerType !== "touch") return;
-          e.preventDefault();
 
           this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -118,55 +93,60 @@
             this.isPinching = true;
             this.isRotating = false;
 
-            this.startDist = this._dist2Pointers();
-            const s = this.el.getAttribute("scale");
-            this.startScale = { x: s.x, y: s.y, z: s.z };
-            return;
+            const pts = Array.from(this.pointers.values());
+            this.startDist = this.distance(pts[0], pts[1]);
+            this.startScale = this.el.object3D.scale.x;
           }
 
           if (this.pointers.size === 1) {
             this.isRotating = true;
-            this.isPinching = false;
-
             this.prevX = e.clientX;
+            this.prevY = e.clientY;
           }
         },
 
-        onPointerMove: function (e) {
-          if (e.pointerType !== "touch") return;
+        onMove(e) {
           if (!this.pointers.has(e.pointerId)) return;
-          e.preventDefault();
 
           this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
           // ZOOM
           if (this.isPinching && this.pointers.size === 2) {
-            const dist = this._dist2Pointers();
+            const pts = Array.from(this.pointers.values());
+            const dist = this.distance(pts[0], pts[1]);
+
             const ratio = dist / this.startDist;
+            let newScale = this.clamp(this.startScale * ratio, this.data.minScale, this.data.maxScale);
 
-            const nx = this.clamp(this.startScale.x * ratio, this.data.minScale, this.data.maxScale);
-            const ny = this.clamp(this.startScale.y * ratio, this.data.minScale, this.data.maxScale);
-            const nz = this.clamp(this.startScale.z * ratio, this.data.minScale, this.data.maxScale);
-
-            this.el.setAttribute("scale", { x: nx, y: ny, z: nz });
+            this.el.object3D.scale.set(newScale, newScale, newScale);
             return;
           }
 
-          // ROTACIÓN SOLO HORIZONTAL
-          if (this.isRotating && this.pointers.size === 1) {
+          if (this.pointers.size === 1) {
             const dx = e.clientX - this.prevX;
+            const dy = e.clientY - this.prevY;
 
             this.prevX = e.clientX;
+            this.prevY = e.clientY;
 
-            this.el.object3D.rotation.y += dx * this.data.rotateSpeed;
+            // 👉 decidir gesto dominante
+            if (Math.abs(dx) > Math.abs(dy)) {
+              // ROTACIÓN HORIZONTAL
+              this.el.object3D.rotation.y += dx * this.data.rotateSpeed;
+            } else if (this.tapa) {
+              // 👉 CONTROL DE TAPA
+              this.tapaAngle += dy * this.data.tapaSpeed;
+              this.tapaAngle = this.clamp(this.tapaAngle, this.data.tapaMin, this.data.tapaMax);
+
+              this.tapa.rotation.x = -THREE.MathUtils.degToRad(this.tapaAngle);
+            }
           }
         },
 
-        onPointerUp: function (e) {
+        onUp(e) {
           this.pointers.delete(e.pointerId);
           this.isPinching = false;
           this.isRotating = false;
-          this.startDist = 0;
         }
       });
     </script>
