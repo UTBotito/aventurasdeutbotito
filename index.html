@@ -135,10 +135,10 @@
               this.el.object3D.rotation.y += dx * this.data.rotateSpeed;
             } else if (this.tapa) {
               // 👉 CONTROL DE TAPA
-              this.tapaAngle += dy * this.data.tapaSpeed;
+              this.tapaAngle -= dy * this.data.tapaSpeed;
               this.tapaAngle = this.clamp(this.tapaAngle, this.data.tapaMin, this.data.tapaMax);
 
-              this.tapa.rotation.x = THREE.MathUtils.degToRad(this.tapaAngle);
+              this.tapa.rotation.x = -THREE.MathUtils.degToRad(this.tapaAngle);
             }
           }
         },
