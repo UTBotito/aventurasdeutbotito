@@ -1,6 +1,6 @@
 {
-  "name": "Mi App",
-  "short_name": "MiApp",
+  "name": "Las Aventuras de UTBotito",
+  "short_name": "UTBotitoAR",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
