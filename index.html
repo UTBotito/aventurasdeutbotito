@@ -135,10 +135,47 @@
               this.el.object3D.rotation.y += dx * this.data.rotateSpeed;
             } else if (this.tapa) {
               // 👉 CONTROL DE TAPA
-              this.tapaAngle -= dy * this.data.tapaSpeed;
-              this.tapaAngle = this.clamp(this.tapaAngle, this.data.tapaMin, this.data.tapaMax);
+              const mid = 90;
 
-              this.tapa.rotation.x = -THREE.MathUtils.degToRad(this.tapaAngle);
+              // Dirección del gesto
+              const goingUp = dy < 0;
+              const goingDown = dy > 0;
+              
+              // FASE 1: 0 → 90 (abrir hacia arriba)
+              if (this.tapaAngle < mid) {
+                if (goingUp) {
+                  this.tapaAngle += Math.abs(dy) * this.data.tapaSpeed;
+                }
+              }
+              
+              // FASE 2: 90 → 180 (seguir abriendo hacia abajo)
+              else {
+                if (goingDown) {
+                  this.tapaAngle += Math.abs(dy) * this.data.tapaSpeed;
+                }
+              }
+              
+              // ===== CIERRE =====
+              
+              // De 180 → 90 (cerrando hacia arriba)
+              if (this.tapaAngle > mid) {
+                if (goingUp) {
+                  this.tapaAngle -= Math.abs(dy) * this.data.tapaSpeed;
+                }
+              }
+              
+              // De 90 → 0 (cerrando hacia abajo)
+              else {
+                if (goingDown) {
+                  this.tapaAngle -= Math.abs(dy) * this.data.tapaSpeed;
+                }
+              }
+              
+              // Limitar rango
+              this.tapaAngle = this.clamp(this.tapaAngle, 0, 180);
+              
+              // Aplicar rotación
+              this.tapa.rotation.x = THREE.MathUtils.degToRad(this.tapaAngle);
             }
           }
         },
