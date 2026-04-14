@@ -138,7 +138,7 @@
               this.tapaAngle += dy * this.data.tapaSpeed;
               this.tapaAngle = this.clamp(this.tapaAngle, this.data.tapaMin, this.data.tapaMax);
 
-              this.tapa.rotation.x = -THREE.MathUtils.degToRad(this.tapaAngle);
+              this.tapa.rotation.x = THREE.MathUtils.degToRad(this.tapaAngle);
             }
           }
         },
