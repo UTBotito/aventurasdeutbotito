@@ -138,8 +138,8 @@
               const mid = 90;
 
               // Dirección del gesto
-              const goingUp = dy > 0;
-              const goingDown = dy < 0;
+              const goingUp = dy < 0;
+              const goingDown = dy > 0;
               
               // FASE 1: 0 → 90 (abrir hacia arriba)
               if (this.tapaAngle < mid) {
@@ -175,7 +175,7 @@
               this.tapaAngle = this.clamp(this.tapaAngle, 0, 180);
               
               // Aplicar rotación
-              this.tapa.rotation.x = THREE.MathUtils.degToRad(this.tapaAngle);
+              this.tapa.rotation.x = -THREE.MathUtils.degToRad(this.tapaAngle);
             }
           }
         },
