@@ -50,6 +50,7 @@
 
           this.isPinching = false;
           this.isRotating = false;
+          this.isTouchingTapa = false;
 
           this.prevX = 0;
           this.prevY = 0;
@@ -59,6 +60,9 @@
 
           this.tapa = null;
           this.tapaAngle = 0;
+
+          this.raycaster = new THREE.Raycaster();
+          this.mouse = new THREE.Vector2();
 
           this.el.addEventListener("model-loaded", () => {
             this.tapa = this.el.object3D.getObjectByName(this.data.tapaName);
@@ -84,6 +88,29 @@
           return Math.hypot(a.x - b.x, a.y - b.y);
         },
 
+        _hitTest(clientX, clientY) {
+          const canvas = this.el.sceneEl.renderer.domElement;
+          const rect = canvas.getBoundingClientRect();
+
+          this.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+          this.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+          this.raycaster.setFromCamera(this.mouse, this.el.sceneEl.camera);
+
+          const intersects = this.raycaster.intersectObject(this.el.object3D, true);
+
+          if (intersects.length > 0) {
+            let obj = intersects[0].object;
+
+            while (obj) {
+              if (obj === this.tapa) return true;
+              obj = obj.parent;
+            }
+          }
+
+          return false;
+        },
+
         onDown(e) {
           if (e.pointerType !== "touch") return;
 
@@ -99,9 +126,11 @@
           }
 
           if (this.pointers.size === 1) {
-            this.isRotating = true;
             this.prevX = e.clientX;
             this.prevY = e.clientY;
+
+            this.isTouchingTapa = this._hitTest(e.clientX, e.clientY);
+            this.isRotating = !this.isTouchingTapa;
           }
         },
 
@@ -129,12 +158,12 @@
             this.prevX = e.clientX;
             this.prevY = e.clientY;
 
-            // 👉 decidir gesto dominante
-            if (Math.abs(dx) > Math.abs(dy)) {
-              // ROTACIÓN HORIZONTAL
+            if (Math.abs(dx) > Math.abs(dy) && !this.isTouchingTapa) {
+              // ROTACIÓN
               this.el.object3D.rotation.y += dx * this.data.rotateSpeed;
-            } else if (this.tapa) {
-              // 👉 CONTROL DE TAPA
+            } 
+            else if (this.tapa && this.isTouchingTapa) {
+              // CONTROL DE TAPA
               this.tapaAngle -= dy * this.data.tapaSpeed;
               this.tapaAngle = this.clamp(this.tapaAngle, this.data.tapaMin, this.data.tapaMax);
 
@@ -147,6 +176,7 @@
           this.pointers.delete(e.pointerId);
           this.isPinching = false;
           this.isRotating = false;
+          this.isTouchingTapa = false;
         }
       });
     </script>
