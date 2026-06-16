@@ -16,15 +16,15 @@
 
   <body>
     <a-scene
-      mindar-image="imageTargetSrc: ./targets0.mind;"
+      mindar-image="imageTargetSrc: ./targets5.mind; maxTrack: 1;"
       vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false"
     >
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
+      <!-- Target 0: carro con tapa interactiva -->
       <a-entity mindar-image-target="targetIndex: 0">
         <a-gltf-model
-          id="modelo"
           src="./modcarro.glb"
           position="0 0 0"
           rotation="0 0 0"
@@ -32,15 +32,33 @@
           gesture-controls
         ></a-gltf-model>
       </a-entity>
+
+      <!-- Targets 1-4: solo rotación y zoom -->
+      <a-entity mindar-image-target="targetIndex: 1">
+        <a-gltf-model src="./modcarro.glb" position="0 0 0" rotation="0 0 0" scale="5 5 5" gesture-basic></a-gltf-model>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 2">
+        <a-gltf-model src="./modcarro.glb" position="0 0 0" rotation="0 0 0" scale="5 5 5" gesture-basic></a-gltf-model>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 3">
+        <a-gltf-model src="./modcarro.glb" position="0 0 0" rotation="0 0 0" scale="5 5 5" gesture-basic></a-gltf-model>
+      </a-entity>
+
+      <a-entity mindar-image-target="targetIndex: 4">
+        <a-gltf-model src="./modcarro.glb" position="0 0 0" rotation="0 0 0" scale="5 5 5" gesture-basic></a-gltf-model>
+      </a-entity>
+
     </a-scene>
 
+    <!-- Componente original con tapa interactiva (sin cambios) -->
     <script>
       AFRAME.registerComponent("gesture-controls", {
         schema: {
           minScale: { default: 0.8 },
           maxScale: { default: 15.0 },
           rotateSpeed: { default: 0.008 },
-
           tapaName: { default: "tapa_v31" },
           tapaMin: { default: 0 },
           tapaMax: { default: 180 },
@@ -49,26 +67,20 @@
 
         init: function () {
           this.pointers = new Map();
-
           this.isPinching = false;
           this.isRotating = false;
           this.isTouchingTapa = false;
-
           this.prevX = 0;
           this.prevY = 0;
-
           this.startDist = 0;
           this.startScale = 1;
-
           this.tapa = null;
           this.tapaAngle = 0;
-
           this.raycaster = new THREE.Raycaster();
           this.mouse = new THREE.Vector2();
 
           this.el.addEventListener("model-loaded", () => {
             this.tapa = this.el.object3D.getObjectByName(this.data.tapaName);
-
             if (this.tapa) {
               console.log("✅ tapa encontrada:", this.data.tapaName);
             } else {
@@ -82,46 +94,33 @@
           window.addEventListener("pointercancel", this.onUp.bind(this));
         },
 
-        clamp(v, min, max) {
-          return Math.max(min, Math.min(max, v));
-        },
-
-        distance(a, b) {
-          return Math.hypot(a.x - b.x, a.y - b.y);
-        },
+        clamp(v, min, max) { return Math.max(min, Math.min(max, v)); },
+        distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); },
 
         _hitTest(clientX, clientY) {
           const canvas = this.el.sceneEl.renderer.domElement;
           const rect = canvas.getBoundingClientRect();
-
           this.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
           this.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-
           this.raycaster.setFromCamera(this.mouse, this.el.sceneEl.camera);
-
           const intersects = this.raycaster.intersectObject(this.el.object3D, true);
-
           if (intersects.length > 0) {
             let obj = intersects[0].object;
-
             while (obj) {
               if (obj === this.tapa) return true;
               obj = obj.parent;
             }
           }
-
           return false;
         },
 
         onDown(e) {
           if (e.pointerType !== "touch") return;
-
           this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
           if (this.pointers.size === 2) {
             this.isPinching = true;
             this.isRotating = false;
-
             const pts = Array.from(this.pointers.values());
             this.startDist = this.distance(pts[0], pts[1]);
             this.startScale = this.el.object3D.scale.x;
@@ -130,7 +129,6 @@
           if (this.pointers.size === 1) {
             this.prevX = e.clientX;
             this.prevY = e.clientY;
-
             this.isTouchingTapa = this._hitTest(e.clientX, e.clientY);
             this.isRotating = !this.isTouchingTapa;
           }
@@ -138,17 +136,13 @@
 
         onMove(e) {
           if (!this.pointers.has(e.pointerId)) return;
-
           this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-          // ZOOM
           if (this.isPinching && this.pointers.size === 2) {
             const pts = Array.from(this.pointers.values());
             const dist = this.distance(pts[0], pts[1]);
-
             const ratio = dist / this.startDist;
             let newScale = this.clamp(this.startScale * ratio, this.data.minScale, this.data.maxScale);
-
             this.el.object3D.scale.set(newScale, newScale, newScale);
             return;
           }
@@ -156,28 +150,19 @@
           if (this.pointers.size === 1) {
             const dx = e.clientX - this.prevX;
             const dy = e.clientY - this.prevY;
-
             this.prevX = e.clientX;
             this.prevY = e.clientY;
 
-            // 👉 SI TOCA LA TAPA
             if (this.tapa && this.isTouchingTapa) {
               this.tapaAngle -= dy * this.data.tapaSpeed;
               this.tapaAngle = this.clamp(this.tapaAngle, this.data.tapaMin, this.data.tapaMax);
-
               this.tapa.rotation.x = -THREE.MathUtils.degToRad(this.tapaAngle);
-            }
-
-            // 👉 SI NO TOCA LA TAPA
-            else {
+            } else {
               if (Math.abs(dx) > Math.abs(dy)) {
-                // ROTACIÓN HORIZONTAL
                 this.el.object3D.rotation.y += dx * this.data.rotateSpeed;
               } else {
-                // 🔥 ROTACIÓN VERTICAL
                 const direction = Math.cos(this.el.object3D.rotation.y);
                 this.el.object3D.rotation.x += dy * this.data.rotateSpeed * (direction >= 0 ? 1 : -1);
-
                 const maxTilt = Math.PI / 2;
                 this.el.object3D.rotation.x = Math.max(-maxTilt, Math.min(maxTilt, this.el.object3D.rotation.x));
               }
@@ -193,12 +178,95 @@
         }
       });
     </script>
+
+    <!-- Componente simple: solo rotación y zoom -->
     <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js')
-        .then(() => console.log('SW registrado'))
-        .catch(err => console.log('Error SW:', err));
-    }
+      AFRAME.registerComponent("gesture-basic", {
+        schema: {
+          minScale: { default: 0.8 },
+          maxScale: { default: 15.0 },
+          rotateSpeed: { default: 0.008 }
+        },
+
+        init: function () {
+          this.pointers = new Map();
+          this.isPinching = false;
+          this.prevX = 0;
+          this.prevY = 0;
+          this.startDist = 0;
+          this.startScale = 1;
+
+          window.addEventListener("pointerdown", this.onDown.bind(this));
+          window.addEventListener("pointermove", this.onMove.bind(this));
+          window.addEventListener("pointerup", this.onUp.bind(this));
+          window.addEventListener("pointercancel", this.onUp.bind(this));
+        },
+
+        clamp(v, min, max) { return Math.max(min, Math.min(max, v)); },
+        distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); },
+
+        onDown(e) {
+          if (e.pointerType !== "touch") return;
+          this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+          if (this.pointers.size === 2) {
+            this.isPinching = true;
+            const pts = Array.from(this.pointers.values());
+            this.startDist = this.distance(pts[0], pts[1]);
+            this.startScale = this.el.object3D.scale.x;
+          }
+
+          if (this.pointers.size === 1) {
+            this.prevX = e.clientX;
+            this.prevY = e.clientY;
+          }
+        },
+
+        onMove(e) {
+          if (!this.pointers.has(e.pointerId)) return;
+          this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+          // ZOOM
+          if (this.isPinching && this.pointers.size === 2) {
+            const pts = Array.from(this.pointers.values());
+            const dist = this.distance(pts[0], pts[1]);
+            const ratio = dist / this.startDist;
+            let newScale = this.clamp(this.startScale * ratio, this.data.minScale, this.data.maxScale);
+            this.el.object3D.scale.set(newScale, newScale, newScale);
+            return;
+          }
+
+          // ROTACIÓN
+          if (this.pointers.size === 1) {
+            const dx = e.clientX - this.prevX;
+            const dy = e.clientY - this.prevY;
+            this.prevX = e.clientX;
+            this.prevY = e.clientY;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+              this.el.object3D.rotation.y += dx * this.data.rotateSpeed;
+            } else {
+              const direction = Math.cos(this.el.object3D.rotation.y);
+              this.el.object3D.rotation.x += dy * this.data.rotateSpeed * (direction >= 0 ? 1 : -1);
+              const maxTilt = Math.PI / 2;
+              this.el.object3D.rotation.x = Math.max(-maxTilt, Math.min(maxTilt, this.el.object3D.rotation.x));
+            }
+          }
+        },
+
+        onUp(e) {
+          this.pointers.delete(e.pointerId);
+          this.isPinching = false;
+        }
+      });
+    </script>
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(() => console.log('SW registrado'))
+          .catch(err => console.log('Error SW:', err));
+      }
     </script>
   </body>
 </html>
